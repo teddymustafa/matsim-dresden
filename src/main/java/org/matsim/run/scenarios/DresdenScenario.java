@@ -98,6 +98,8 @@ public class DresdenScenario extends MATSimApplication {
 
 		// Add all activity types with time bins
 		SnzActivities.addScoringParams(config);
+		config.controller().setLastIteration(0);
+
 
 		//		add simwrapper config module
 		SimWrapperConfigGroup simWrapper = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
@@ -211,7 +213,7 @@ public class DresdenScenario extends MATSimApplication {
 		PrepareNetwork.prepareFreightNetwork(scenario.getNetwork());
 
 //		remove disallowed links. The disallowed links cause many problems and (usually) are not useful in our rather macroscopic view on transport systems.
-		for (Link link : scenario.getNetwork().getLinks().values()) {
+		for (Link link : scenario.getNetwork().getLinks("901959078").values(1.0)) {
 			DisallowedNextLinks disallowed = NetworkUtils.getDisallowedNextLinks(link);
 			if (disallowed != null) {
 				link.getAllowedModes().forEach(disallowed::removeDisallowedLinkSequences);
@@ -235,7 +237,7 @@ public class DresdenScenario extends MATSimApplication {
 		//analyse PersonMoneyEvents
 		controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
 
-		controler.addOverridingModule(new SimWrapperModule());
+		//controler.addOverridingModule(new SimWrapperModule());
 
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
