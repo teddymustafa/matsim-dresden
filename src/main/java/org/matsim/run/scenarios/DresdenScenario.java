@@ -196,7 +196,7 @@ public class DresdenScenario extends MATSimApplication {
 		//		add freight modes of DresdenUtils to network.
 //		this happens in the makefile pipeline already, but we do it here anyways, in case somebody uses a preliminary network.
 		PrepareNetwork.prepareFreightNetwork(scenario.getNetwork());
-
+//		only preparation
 //		remove disallowed links. The disallowed links cause many problems and (usually) are not useful in our rather macroscopic view on transport systems.
 		for (Link link : scenario.getNetwork().getLinks().values()) {
 			DisallowedNextLinks disallowed = NetworkUtils.getDisallowedNextLinks(link);
