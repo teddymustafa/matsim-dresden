@@ -7,6 +7,7 @@ import jakarta.annotation.Nullable;
 import org.matsim.analysis.CheckAndSummarizeLongDistanceFreightPopulation;
 import org.matsim.analysis.CheckStayHomeAgents;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
@@ -93,6 +94,9 @@ public class DresdenScenario extends MATSimApplication {
 	@Nullable
 	@Override
 	protected Config prepareConfig(Config config) {
+
+		config.controller().setLastIteration(0);
+		config.controller().setOutputDirectory("/home/teddymustafa/IdeaProjects/matsim-dresden/output-NurBikesundRIdes");
 		// Add all activity types with time bins
 		SnzActivities.addScoringParams(config);
 
@@ -193,6 +197,8 @@ public class DresdenScenario extends MATSimApplication {
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
+
+
 		//		add freight modes of DresdenUtils to network.
 //		this happens in the makefile pipeline already, but we do it here anyways, in case somebody uses a preliminary network.
 		PrepareNetwork.prepareFreightNetwork(scenario.getNetwork());
@@ -223,9 +229,9 @@ public class DresdenScenario extends MATSimApplication {
 		controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
 
 		// totally turn off simwrapper in case it is not used afterwards. reduces runtime considerably.
-		if (simwrapper) {
-			controler.addOverridingModule(new SimWrapperModule());
-		}
+//		if (simwrapper) {
+//			controler.addOverridingModule(new SimWrapperModule());
+//		}
 
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
