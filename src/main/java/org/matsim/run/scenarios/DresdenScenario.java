@@ -95,8 +95,6 @@ public class DresdenScenario extends MATSimApplication {
 	@Override
 	protected Config prepareConfig(Config config) {
 
-		config.controller().setLastIteration(0);
-		config.controller().setOutputDirectory("/home/teddymustafa/IdeaProjects/matsim-dresden/output-NurBikesundRIdes");
 		// Add all activity types with time bins
 		SnzActivities.addScoringParams(config);
 
