@@ -28,7 +28,7 @@ public class DresdenNoBridges extends DresdenScenario{
 		simwrapper = false;
 
 		config.controller().setLastIteration(0);
-		config.controller().setOutputDirectory("/home/teddymustafa/IdeaProjects/matsim-dresden/output-no-bridges");
+		config.controller().setOutputDirectory("output-no-bridges");
 
 		return config;
 	}

@@ -15,7 +15,7 @@ public class SlowSpeedPolicy extends DresdenScenario{
 		simwrapper = false;
 
 		config.controller().setLastIteration(0);
-		config.controller().setOutputDirectory("/home/teddymustafa/IdeaProjects/matsim-dresden/output-reduced-speed");
+		config.controller().setOutputDirectory("output-reduced-speed");
 
 		return config;
 	}
