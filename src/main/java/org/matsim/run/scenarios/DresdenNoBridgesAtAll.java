@@ -30,7 +30,7 @@ public class DresdenNoBridgesAtAll extends DresdenScenario{
 	@Override
 	protected void prepareScenario(Scenario scenario) {
 		super.prepareScenario(scenario);
-		// in order: Elbebrucke, Fluegelwegbrucke, Marienbrucke, Augustusbrucke, Carolabrucke, Albertbrucke, Waldschloesschenbrucke, Loeschwitzbrucke
+		// in this order: Elbebrucke, Fluegelwegbrucke, Marienbrucke, Augustusbrucke, Carolabrucke, Albertbrucke, Waldschloesschenbrucke, Loeschwitzbrucke
 		String[] bridges = {"31059226","318199257","425728245","14448952","-488766980","761288685","-264360404","1031454500","4214231","901959078","-264360396#1","505502627#0","277710971","132572494","-30129851","30129851"};
 		for (String bridge : bridges){
 			Link link =scenario.getNetwork().getLinks().get(Id.createLinkId(bridge));
