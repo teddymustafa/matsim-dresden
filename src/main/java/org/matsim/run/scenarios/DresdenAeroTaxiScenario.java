@@ -42,18 +42,38 @@ import java.util.*;
  *   prepareScenario  -- build the vertiport / flight-link network
  *   prepareControler -- bind the base-fare handler
  *
- * Run (config file and 1 pct sample are hardcoded in main; iterations, run id
+ * Run (the 1 pct config file is hardcoded in main; iterations, run id
  * and output directory are set in prepareConfig):
- *   IntelliJ program arguments:  run --iterations 0
+ *   IntelliJ program arguments:  run
  *   Command line:  java -Xmx11g -cp matsim-dresden.jar \
- *                       org.matsim.run.scenarios.RunAeroTaxi run --iterations 0
+ *                       org.matsim.run.scenarios.DresdenAeroTaxiScenario run
  *
  * TODO before the first run: copy the @MATSimApplication.Prepare and
  * @MATSimApplication.Analysis annotation blocks from DresdenScenario onto this
  * class. Java does not inherit annotations, so without them the scenario's
  * preparation steps and the automatic SimWrapper dashboards are lost.
  *
- * MATSim UE Planning, Summer Semester 2026
+ * -------------------------------------------------------------------------
+ * LIMITATIONS (accepted for this study, given time constraints)
+ * -------------------------------------------------------------------------
+ *  1. Full mesh, no minimum flight distance: inner-city vertiports (HBF,
+ *     NST, ALT, TUD) are connected by flights of a few hundred metres that
+ *     agents may use, pulling the average aeroTaxi trip below any realistic
+ *     break-even distance.
+ *  2. Vertiports attach to the nearest street node by straight-line
+ *     distance only. For rural sites (MEI, PIR) this node may be far away
+ *     and not genuinely walk-accessible; access distance is not validated.
+ *  3. Ground handling (2 x GROUND_TIME_S) is modelled as travel time on the
+ *     board/alight links. It is therefore valued only at the opportunity
+ *     cost of foregone activity time (~performing utility), with no extra
+ *     mode-specific time penalty.
+ *  4. Fare and ASC are illustrative, not calibrated.
+ *  5. Teleported mode: unlimited capacity, no vertiport queues, no fleet
+ *     size constraint, and no interaction with road congestion.
+ *  6. Base @MATSimApplication.Prepare / @Analysis annotations are not
+ *     carried over, so some SimWrapper dashboards may be reduced.
+ * -------------------------------------------------------------------------
+ *
  */
 public class DresdenAeroTaxiScenario extends DresdenScenario {
 
@@ -94,15 +114,20 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 	 * Passenger ground handling time per boarding and per alighting [s]:
 	 * check-in, waiting, safety briefing, boarding. Encoded as travel time on
 	 * the vertiport access links, since a teleported mode cannot represent
-	 * service times directly. This is what pushes the break-even distance
-	 * against car out to roughly 20 km.
+	 * service times directly. This time is valued only at the opportunity cost
+	 * of foregone activity time (~performing utility, inherited from
+	 * DresdenScenario); there is no extra mode-specific time penalty.
 	 */
-	private static final double GROUND_TIME_S = 300.0;
+	private static final double GROUND_TIME_S = 120.0;
 	private static final double ACCESS_LINK_M = 50.0;
 
-	private static final double BASE_FARE_EUR = 15.0;      // charged per boarding
-	private static final double FARE_PER_M_EUR = 0.0035;   // 3.50 EUR/km
-	private static final double ASC = -2.0;                // booking friction [utils]
+	private static final double BASE_FARE_EUR = 20.0;     // booking/handling fee, charged per boarding
+	private static final double FARE_PER_M_EUR = 0.0020;   // 2.00 EUR/km (near-term eVTOL, > ground taxi)
+	// Lumped intangible penalty [utils] for a novel air mode -- unfamiliarity,
+	// distrust, perceived flight risk, comfort. Net negative; captures only the
+	// non-time, non-money effects (physical ground time is on the links, so this
+	// does not double-count it). Assumed, not calibrated.
+	private static final double ASC = -2.0;
 
 	// ---- run control ----
 	/**
@@ -111,10 +136,8 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 	 * is used and all custom config groups are registered.
 	 */
 	private static final String CONFIG_FILE = "input/v1.0/dresden-v1.0-1pct.config.xml";
-	private static final String SAMPLE_SIZE = "--1pct";
-
-	private static final int LAST_ITERATION = 0;
-	private static final String RUN_ID = "aeroTaxi-P2-1";
+	private static final int LAST_ITERATION = 5;
+	private static final String RUN_ID = "aeroTaxi-P2-fareverify";
 	private static final String OUTPUT_DIR = "output/" + RUN_ID;
 
 	public static void main(String[] args) {
@@ -128,10 +151,6 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 			a.add("--config");
 			a.add(CONFIG_FILE);
 		}
-		if (!a.contains(SAMPLE_SIZE)) {
-			a.add(SAMPLE_SIZE);
-		}
-
 		log.info("effective arguments: {}", String.join(" ", a));
 		MATSimApplication.run(DresdenAeroTaxiScenario.class, a.toArray(new String[0]));
 	}
@@ -153,6 +172,7 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 		config.controller().setOutputDirectory(OUTPUT_DIR);
 		config.controller().setOverwriteFileSetting(
 			OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
+		config.controller().setWriteEventsInterval(1);   // TEMP: fare-verification run only
 
 		// -- routing: network-routed, but absent from qsim.mainModes, so the
 		//    teleportation engine moves the agent along the routed path
@@ -171,7 +191,11 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 		// -- scoring
 		ScoringConfigGroup.ModeParams mode = new ScoringConfigGroup.ModeParams(MODE);
 		mode.setConstant(ASC);
-		mode.setMarginalUtilityOfTraveling(0.0);          // in-vehicle time valued like car
+		// In-vehicle and ground time are valued like car time: no extra
+		// mode-specific penalty, so travel time costs only the opportunity cost
+		// of foregone activity time (~performing utility). A deliberate
+		// simplification -- see the LIMITATIONS block on the class.
+		mode.setMarginalUtilityOfTraveling(0.0);
 		mode.setMonetaryDistanceRate(-FARE_PER_M_EUR);    // EUR per metre, negative = cost
 		config.scoring().addModeParams(mode);
 
@@ -208,20 +232,25 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 		Set<String> only = Set.of(MODE);
 		Map<String, Node> airNodes = new LinkedHashMap<>();
 
-		// one ground node and one air node per vertiport, joined by a boarding
-		// and an alighting link whose travel time encodes the ground handling
+		// Use the original street network as the ground side of each vertiport.
+		// This removes the isolated ground nodes from the previous version and
+		// lets access/egress walks end at a real street-network node.
+		List<Node> streetNodes = new ArrayList<>(net.getNodes().values());
+
 		for (Map.Entry<String, Coord> vp : VERTIPORTS.entrySet()) {
 			String id = vp.getKey();
 			Coord c = vp.getValue();
-			Node ground = f.createNode(Id.createNodeId("vt_" + id + "_g"), c);
+			Node street = findNearestNode(streetNodes, c);
 			Node sky = f.createNode(Id.createNodeId("vt_" + id + "_a"), c);
-			net.addNode(ground);
 			net.addNode(sky);
 			airNodes.put(id, sky);
 
 			double v = ACCESS_LINK_M / GROUND_TIME_S;
-			addLink(net, f, "vt_" + id + "_board", ground, sky, ACCESS_LINK_M, v, only);
-			addLink(net, f, "vt_" + id + "_alight", sky, ground, ACCESS_LINK_M, v, only);
+			addLink(net, f, "vt_" + id + "_board", street, sky, ACCESS_LINK_M, v, only);
+			addLink(net, f, "vt_" + id + "_alight", sky, street, ACCESS_LINK_M, v, only);
+
+			log.info("vertiport {} attached to street node {} (offset {} m)",
+				id, street.getId(), Math.round(CoordUtils.calcEuclideanDistance(c, street.getCoord())));
 		}
 
 		// full mesh of flight links -- point-to-point service, no transfers
@@ -265,6 +294,24 @@ public class DresdenAeroTaxiScenario extends DresdenScenario {
 		vehicles.addVehicleType(vt);
 
 		log.info("registered placeholder VehicleType '{}'", MODE);
+	}
+
+	private static Node findNearestNode(Collection<Node> nodes, Coord coord) {
+		Node nearest = null;
+		double bestDistance = Double.POSITIVE_INFINITY;
+
+		for (Node node : nodes) {
+			double distance = CoordUtils.calcEuclideanDistance(coord, node.getCoord());
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				nearest = node;
+			}
+		}
+
+		if (nearest == null) {
+			throw new IllegalStateException("Cannot attach vertiport: street network has no nodes");
+		}
+		return nearest;
 	}
 
 	private void addLink(Network net, NetworkFactory f, String id, Node from, Node to,
